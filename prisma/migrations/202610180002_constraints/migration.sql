@@ -1,0 +1,15 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE UNIQUE INDEX "GroupEnrollment_one_active" ON "GroupEnrollment" ("studentId", "groupId") WHERE "leftAt" IS NULL;
+ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_time_order" CHECK ("endsAt" > "startsAt");
+ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_teacher_no_overlap" EXCLUDE USING gist ("teacherId" WITH =, tstzrange("startsAt", "endsAt", '[)') WITH &&) WHERE (status <> 'CANCELLED');
+ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_room_no_overlap" EXCLUDE USING gist ("roomId" WITH =, tstzrange("startsAt", "endsAt", '[)') WITH &&) WHERE (status <> 'CANCELLED');
+ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_group_no_overlap" EXCLUDE USING gist ("groupId" WITH =, tstzrange("startsAt", "endsAt", '[)') WITH &&) WHERE (status <> 'CANCELLED');
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_positive" CHECK (amount > 0);
+ALTER TABLE "Refund" ADD CONSTRAINT "Refund_positive" CHECK (amount > 0);
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_positive" CHECK (amount > 0);
+ALTER TABLE "PaymentAllocation" ADD CONSTRAINT "Allocation_positive" CHECK (amount > 0);
+ALTER TABLE "TariffPlan" ADD CONSTRAINT "Tariff_valid" CHECK (price > 0 AND "validDays" > 0 AND ("lessonLimit" IS NULL OR "lessonLimit" > 0));
+ALTER TABLE "Group" ADD CONSTRAINT "Group_capacity_positive" CHECK (capacity > 0);
+ALTER TABLE "Room" ADD CONSTRAINT "Room_capacity_positive" CHECK (capacity > 0);
+ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_valid" CHECK ("endsAt" > "startsAt" AND price > 0 AND ("lessonLimit" IS NULL OR "lessonLimit" > 0));
+ALTER TABLE "Course" ADD CONSTRAINT "Course_age_valid" CHECK ("minAge" >= 0 AND "maxAge" >= "minAge" AND duration > 0);

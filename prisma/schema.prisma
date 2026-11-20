@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoleCode {
+  ADMIN
+  MANAGER
+  TEACHER
+}
+
+enum RecordStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum LessonStatus {
+  PLANNED
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  LATE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  EXHAUSTED
+  PAUSED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      RoleCode @unique
+  users     User[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model User {
+  attendanceChanges   AttendanceHistory[]
+  subscriptionChanges SubscriptionHistory[]
+  paymentsRecorded    Payment[]
+  refundsRecorded     Refund[]
+  id                  String                @id @default(uuid()) @db.Uuid
+  email               String                @unique
+  name                String
+  passwordHash        String
+  active              Boolean               @default(true)
+  roleId              String                @db.Uuid
+  role                Role                  @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  teacher             Teacher?
+  sessions            Session[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, expiresAt])
+}
+
+model Teacher {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  phone          String
+  email          String       @unique
+  specialization String
+  status         RecordStatus @default(ACTIVE)
+  userId         String?      @unique @db.Uuid
+  user           User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  groups         Group[]
+  lessons        Lesson[]
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+}
+
+model Parent {
+  id               String          @id @default(uuid()) @db.Uuid
+  name             String
+  phone            String          @unique
+  email            String?
+  notes            String          @default("")
+  preferredContact String          @default("PHONE")
+  students         StudentParent[]
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@index([name])
+}
+
+model Student {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String
+  birthDate     DateTime          @db.Date
+  gender        String?
+  status        RecordStatus      @default(ACTIVE)
+  notes         String            @default("")
+  parents       StudentParent[]
+  enrollments   GroupEnrollment[]
+  attendance    Attendance[]
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  payments      Payment[]
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@unique([name, birthDate])
+  @@index([status, name])
+}
+
+model StudentParent {
+  studentId String   @db.Uuid
+  parentId  String   @db.Uuid
+  relation  String   @default("Представитель")
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([studentId, parentId])
+  @@index([parentId])
+}
+
+model Course {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String         @unique
+  description   String         @default("")
+  minAge        Int
+  maxAge        Int
+  duration      Int
+  groups        Group[]
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+}
+
+model Group {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String            @unique
+  courseId      String            @db.Uuid
+  teacherId     String            @db.Uuid
+  capacity      Int
+  status        RecordStatus      @default(ACTIVE)
+  course        Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  teacher       Teacher           @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  enrollments   GroupEnrollment[]
+  lessons       Lesson[]
+  subscriptions Subscription[]
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([teacherId, status])
+  @@index([courseId])
+}
+
+model GroupEnrollment {
+  id        String    @id @default(uuid()) @db.Uuid
+  studentId String    @db.Uuid
+  groupId   String    @db.Uuid
+  joinedAt  DateTime  @default(now()) @db.Timestamptz(3)
+  leftAt    DateTime? @db.Timestamptz(3)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([groupId, leftAt])
+  @@index([studentId, leftAt])
+}
+
+model Room {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  capacity  Int
+  lessons   Lesson[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model RecurrenceRule {
+  id            String   @id @default(uuid()) @db.Uuid
+  intervalWeeks Int      @default(1)
+  count         Int
+  timeZone      String   @default("Asia/Almaty")
+  lessons       Lesson[]
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model Lesson {
+  id           String          @id @default(uuid()) @db.Uuid
+  groupId      String          @db.Uuid
+  teacherId    String          @db.Uuid
+  roomId       String          @db.Uuid
+  recurrenceId String?         @db.Uuid
+  startsAt     DateTime        @db.Timestamptz(3)
+  endsAt       DateTime        @db.Timestamptz(3)
+  status       LessonStatus    @default(PLANNED)
+  group        Group           @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  teacher      Teacher         @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  room         Room            @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  recurrence   RecurrenceRule? @relation(fields: [recurrenceId], references: [id], onDelete: Restrict)
+  attendance   Attendance[]
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@index([startsAt, status])
+  @@index([groupId, startsAt])
+  @@index([teacherId, startsAt])
+  @@index([roomId, startsAt])
+}
+
+model Attendance {
+  id        String              @id @default(uuid()) @db.Uuid
+  studentId String              @db.Uuid
+  lessonId  String              @db.Uuid
+  status    AttendanceStatus
+  student   Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  lesson    Lesson              @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  usage     SubscriptionUsage?
+  history   AttendanceHistory[]
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@unique([studentId, lessonId])
+  @@index([lessonId])
+}
+
+model AttendanceHistory {
+  actor        User              @relation(fields: [actorId], references: [id], onDelete: Restrict, map: "AttendanceHistory_actor_fk")
+  id           String            @id @default(uuid()) @db.Uuid
+  attendanceId String            @db.Uuid
+  attendance   Attendance        @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+  previous     AttendanceStatus?
+  next         AttendanceStatus
+  actorId      String            @db.Uuid
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
+}
+
+model TariffPlan {
+  id              String         @id @default(uuid()) @db.Uuid
+  name            String         @unique
+  price           Decimal        @db.Decimal(14, 2)
+  lessonLimit     Int?
+  validDays       Int
+  chargeAbsent    Boolean        @default(true)
+  chargeExcused   Boolean        @default(false)
+  chargeCancelled Boolean        @default(false)
+  active          Boolean        @default(true)
+  subscriptions   Subscription[]
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(3)
+}
+
+model Subscription {
+  id              String                @id @default(uuid()) @db.Uuid
+  studentId       String                @db.Uuid
+  tariffId        String                @db.Uuid
+  courseId        String?               @db.Uuid
+  groupId         String?               @db.Uuid
+  price           Decimal               @db.Decimal(14, 2)
+  lessonLimit     Int?
+  chargeAbsent    Boolean
+  chargeExcused   Boolean
+  chargeCancelled Boolean
+  startsAt        DateTime              @db.Timestamptz(3)
+  endsAt          DateTime              @db.Timestamptz(3)
+  frozenAt        DateTime?             @db.Timestamptz(3)
+  status          SubscriptionStatus    @default(ACTIVE)
+  student         Student               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  tariff          TariffPlan            @relation(fields: [tariffId], references: [id], onDelete: Restrict)
+  course          Course?               @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  group           Group?                @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  usage           SubscriptionUsage[]
+  history         SubscriptionHistory[]
+  invoices        Invoice[]
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+
+  @@index([studentId, status, endsAt])
+}
+
+model SubscriptionUsage {
+  id             String       @id @default(uuid()) @db.Uuid
+  subscriptionId String       @db.Uuid
+  attendanceId   String       @unique @db.Uuid
+  reversedAt     DateTime?    @db.Timestamptz(3)
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  attendance     Attendance   @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([subscriptionId, reversedAt])
+}
+
+model SubscriptionHistory {
+  actor          User         @relation(fields: [actorId], references: [id], onDelete: Restrict, map: "SubscriptionHistory_actor_fk")
+  id             String       @id @default(uuid()) @db.Uuid
+  subscriptionId String       @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  action         String
+  details        Json
+  actorId        String       @db.Uuid
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+}
+
+model Invoice {
+  id             String              @id @default(uuid()) @db.Uuid
+  studentId      String              @db.Uuid
+  subscriptionId String?             @db.Uuid
+  amount         Decimal             @db.Decimal(14, 2)
+  dueAt          DateTime            @db.Timestamptz(3)
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  subscription   Subscription?       @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  allocations    PaymentAllocation[]
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([studentId, dueAt])
+}
+
+model Payment {
+  recorder       User                @relation(fields: [recordedBy], references: [id], onDelete: Restrict, map: "Payment_recorder_fk")
+  id             String              @id @default(uuid()) @db.Uuid
+  studentId      String              @db.Uuid
+  amount         Decimal             @db.Decimal(14, 2)
+  method         PaymentMethod
+  idempotencyKey String              @unique
+  requestHash    String
+  recordedBy     String              @db.Uuid
+  source         String              @default("MANUAL")
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  allocations    PaymentAllocation[]
+  refunds        Refund[]
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([studentId, createdAt])
+  @@index([method, createdAt])
+}
+
+model PaymentAllocation {
+  id        String   @id @default(uuid()) @db.Uuid
+  paymentId String   @db.Uuid
+  invoiceId String   @db.Uuid
+  amount    Decimal  @db.Decimal(14, 2)
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+}
+
+model Refund {
+  recorder       User     @relation(fields: [recordedBy], references: [id], onDelete: Restrict, map: "Refund_recorder_fk")
+  id             String   @id @default(uuid()) @db.Uuid
+  paymentId      String   @db.Uuid
+  amount         Decimal  @db.Decimal(14, 2)
+  reason         String
+  recordedBy     String   @db.Uuid
+  idempotencyKey String   @unique
+  payment        Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([paymentId])
+}
+
+model Notification {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  type             String
+  message          String
+  deduplicationKey String    @unique
+  readAt           DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, readAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  action    String
+  entity    String
+  entityId  String
+  details   Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([entity, entityId, createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
