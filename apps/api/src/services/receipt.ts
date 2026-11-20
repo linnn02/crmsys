@@ -15,7 +15,7 @@ export async function receipt(id: string): Promise<Buffer> {
     doc.on('error', reject);
   });
   doc.font(fileURLToPath(new URL('../../assets/NotoSans-Regular.ttf', import.meta.url)));
-  doc.fillColor('#7951d6').fontSize(26).text('Орбита CRM');
+    doc.fillColor('#7951d6').fontSize(26).text('Oi-Qaragai · Угуша CRM');
   doc.moveDown(0.5).fillColor('#293044').fontSize(19).text('Квитанция об оплате');
   doc
     .moveDown()

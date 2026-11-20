@@ -249,7 +249,7 @@ async function main() {
         const booking = await tx.activityBooking.create({ data: { studentId: student.id, activityId: activities[i % activities.length]!.id, venueId: venues[i % venues.length]!.id, instructorId: teachers[i % teachers.length]!.id, consentId: consent.id, startsAt: start, endsAt: new Date(+start + 60 * 60000), status: 'RESERVED', price: new Prisma.Decimal(5000) } });
         if (i < 4) await tx.inventoryIssue.create({ data: { bookingId: booking.id, itemId: inventory[i % inventory.length]!.id, quantity: 1 } });
       }
-      await tx.setting.create({ data: { key: 'centerName', value: 'Орбита · детский центр' } });
+      await tx.setting.create({ data: { key: 'centerName', value: 'Oi-Qaragai · Угуша' } });
     },
     { timeout: 60000 },
   );

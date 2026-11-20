@@ -1,4 +1,4 @@
-# Орбита — CRM детского центра
+# Oi-Qaragai · Угуша — CRM курортного центра
 
 Работающее full-stack приложение: React/TypeScript, Express, Prisma и PostgreSQL. Русский интерфейс, роли ADMIN/MANAGER/TEACHER, серверные проверки доступа, календарь, посещаемость, абонементы и финансовый журнал. Валюта KZT, часовой пояс Asia/Almaty.
 

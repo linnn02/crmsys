@@ -96,7 +96,7 @@ export function App() {
           <div className="workspace">
             <span className="workspace-icon">О</span>
             <div>
-              <b>Детский центр</b>
+              <b>Oi-Qaragai · Угуша</b>
               <small>Рабочее пространство</small>
             </div>
             <ChevronRight size={15} />
@@ -199,7 +199,7 @@ export function App() {
             </Suspense>
           </main>
           <footer className="app-footer">
-            Орбита CRM <span>Часовой пояс: Asia/Almaty · Валюта: KZT</span>
+            Oi-Qaragai · Угуша CRM <span>Часовой пояс: Asia/Almaty · Валюта: KZT</span>
           </footer>
         </div>
       </div>

@@ -126,7 +126,7 @@ endpoint('/my/groups', 'get', 'Собственные группы препод�
 export const openapi = {
   openapi: '3.1.0',
   info: {
-    title: 'Орбита CRM API',
+    title: 'Oi-Qaragai · Угуша CRM API',
     version: '0.1.0',
     description:
       'Денежные суммы передаются десятичными строками. Авторизация — HttpOnly cookie. Изменяющие запросы требуют доверенный Origin и X-CSRF-Protection: 1. Финансы доступны ADMIN/MANAGER; пользователи и настройки только ADMIN.',

@@ -1,7 +1,7 @@
 export type Locale = 'ru' | 'kk';
 export const messages = {
   ru: {
-    appName: 'Орбита',
+    appName: 'Oi-Qaragai · Угуша',
     description: 'CRM детского центра',
     save: 'Сохранить',
     cancel: 'Отмена',
