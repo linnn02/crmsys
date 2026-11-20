@@ -70,14 +70,19 @@ export function App() {
   if (q.error || !q.data)
     return <Login onLogin={() => void qc.invalidateQueries({ queryKey: ['me'] })} />;
   const user = q.data;
+  const restrictedPaths = user.role === 'INSTRUCTOR'
+    ? ['/', '/students', '/schedule', '/activities', '/attendance', '/analytics', '/notifications']
+    : user.role === 'CLUB_OPERATOR'
+      ? ['/', '/students', '/activities', '/schedule', '/notifications']
+      : user.role === 'ACCOUNTANT'
+        ? ['/', '/students', '/subscriptions', '/payments', '/analytics', '/notifications']
+        : ['/', '/students', '/schedule', '/attendance', '/analytics', '/notifications'];
   const allowed = nav.filter(
     ([path]) =>
       user.role === 'ADMIN' ||
       (user.role === 'MANAGER'
         ? path !== '/settings'
-        : ['/', '/students', '/schedule', '/activities', '/attendance', '/analytics', '/notifications'].includes(
-            path,
-          )),
+        : restrictedPaths.includes(path)),
   );
   const title = allowed.find(([p]) => p === location.pathname)?.[1] ?? 'Карточка ученика';
   return (
@@ -174,7 +179,7 @@ export function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/students" element={<Directory resource="students" />} />
                 <Route path="/students/:id" element={<StudentRoute />} />
-                {user.role !== 'TEACHER' && (
+                {['ADMIN', 'MANAGER', 'ACCOUNTANT'].includes(user.role) && (
                   <>
                     {['parents', 'teachers', 'groups'].map((r) => (
                       <Route key={r} path={'/' + r} element={<Directory key={r} resource={r} />} />

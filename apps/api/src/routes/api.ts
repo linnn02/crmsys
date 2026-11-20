@@ -458,7 +458,7 @@ api.patch('/users/:id', allow('ADMIN'), async (req, res) => {
   const input = z
     .object({
       active: z.boolean().optional(),
-      role: z.enum(['ADMIN', 'MANAGER', 'TEACHER']).optional(),
+      role: z.enum(['ADMIN', 'MANAGER', 'TEACHER', 'INSTRUCTOR', 'CLUB_OPERATOR', 'ACCOUNTANT']).optional(),
       name: v.name.optional(),
       email: z
         .email()
@@ -485,7 +485,7 @@ api.patch('/users/:id', allow('ADMIN'), async (req, res) => {
         include: { teacher: true },
       });
       requireCondition(
-        !current.teacher || !input.role || input.role === 'TEACHER',
+        !current.teacher || !input.role || input.role === 'TEACHER' || input.role === 'INSTRUCTOR',
         409,
         'TEACHER_LINK',
         'Сначала снимите связь с профилем преподавателя',
