@@ -1,0 +1,18 @@
+{
+  "name": "CRM Oi-Qaragai",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-24-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [8080, 4000],
+  "portsAttributes": {
+    "8080": { "label": "CRM web", "onAutoForward": "openBrowser" },
+    "4000": { "label": "CRM API", "onAutoForward": "notify" }
+  },
+  "postCreateCommand": "npm ci && node scripts/init-env.mjs",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "Prisma.prisma"]
+    }
+  }
+}

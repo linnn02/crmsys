@@ -47,6 +47,17 @@ npm run dev
 
 ## Docker Compose
 
+### GitHub Codespaces
+
+Репозиторий содержит `.devcontainer/devcontainer.json`. Откройте GitHub Codespaces → New codespace → выберите `linnn02/crmsys`, дождитесь установки зависимостей и выполните в терминале Codespace:
+
+```bash
+docker compose up --build -d
+docker compose exec -T api npm run db:seed
+```
+
+Откройте автоматически опубликированный порт `8080`. Для остановки используйте меню Codespaces → Stop codespace, а для полного удаления — Delete. Не оставляйте Codespace запущенным без необходимости: бесплатная квота личного GitHub Free ограничена.
+
 ```powershell
 node scripts/init-env.mjs
 docker compose up --build -d
