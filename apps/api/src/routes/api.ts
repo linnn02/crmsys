@@ -18,6 +18,7 @@ import { buySubscription, recordPayment, refundPayment, D } from '../services/fi
 import { analytics } from '../services/analytics.js';
 import { audit } from '../services/audit.js';
 import { resourceRoutes } from '../controllers/resources.js';
+import { listActivities, listVenues, listInventory, listConsents, listBookings, saveActivity, saveVenue, saveInventory, saveConsent, createBooking, updateBookingStatus, issueInventory, returnInventory } from '../services/activities.js';
 export const api = Router();
 api.post(
   '/auth/login',
@@ -168,6 +169,27 @@ api.put('/lessons/:id', allow('ADMIN', 'MANAGER'), async (req, res) =>
 api.post('/lessons/:id/cancel', allow('ADMIN', 'MANAGER'), async (req, res) =>
   res.json(await cancelLesson(v.id.parse(req.params.id), req.principal)),
 );
+api.get('/activities', async (_req, res) => res.json({ items: await listActivities() }));
+api.post('/activities', allow('ADMIN', 'MANAGER'), async (req, res) => res.status(201).json(await saveActivity(v.activityInput.parse(req.body), req.principal)));
+api.put('/activities/:id', allow('ADMIN', 'MANAGER'), async (req, res) => res.json(await saveActivity(v.activityInput.parse(req.body), req.principal, v.id.parse(req.params.id))));
+api.get('/venues', async (_req, res) => res.json({ items: await listVenues() }));
+api.post('/venues', allow('ADMIN', 'MANAGER'), async (req, res) => res.status(201).json(await saveVenue(v.venueInput.parse(req.body), req.principal)));
+api.put('/venues/:id', allow('ADMIN', 'MANAGER'), async (req, res) => res.json(await saveVenue(v.venueInput.parse(req.body), req.principal, v.id.parse(req.params.id))));
+api.get('/inventory', async (_req, res) => res.json({ items: await listInventory() }));
+api.post('/inventory', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.status(201).json(await saveInventory(v.inventoryItemInput.parse(req.body), req.principal)));
+api.put('/inventory/:id', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.json(await saveInventory(v.inventoryItemInput.parse(req.body), req.principal, v.id.parse(req.params.id))));
+api.get('/consents', async (req, res) => res.json({ items: await listConsents(typeof req.query.studentId === 'string' ? v.id.parse(req.query.studentId) : undefined) }));
+api.post('/consents', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.status(201).json(await saveConsent(v.consentInput.parse(req.body), req.principal)));
+api.put('/consents/:id', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.json(await saveConsent(v.consentInput.parse(req.body), req.principal, v.id.parse(req.params.id))));
+api.get('/activity-bookings', async (req, res) => {
+  const from = typeof req.query.from === 'string' ? new Date(req.query.from) : undefined;
+  const to = typeof req.query.to === 'string' ? new Date(req.query.to) : undefined;
+  res.json({ items: await listBookings(from, to) });
+});
+api.post('/activity-bookings', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.status(201).json(await createBooking(v.activityBookingInput.parse(req.body), req.principal)));
+api.patch('/activity-bookings/:id/status', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR', 'INSTRUCTOR'), async (req, res) => res.json(await updateBookingStatus(v.id.parse(req.params.id), z.enum(['RESERVED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).parse(req.body.status), req.principal)));
+api.post('/activity-bookings/:id/inventory', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.status(201).json(await issueInventory(v.id.parse(req.params.id), v.inventoryIssueInput.parse(req.body), req.principal)));
+api.post('/inventory-issues/:id/return', allow('ADMIN', 'MANAGER', 'CLUB_OPERATOR'), async (req, res) => res.json(await returnInventory(v.id.parse(req.params.id), req.principal)));
 api.get('/attendance/:lessonId', async (req, res) => {
   const lesson = await db.lesson.findUniqueOrThrow({
     where: { id: v.id.parse(req.params.lessonId) },

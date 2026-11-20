@@ -106,5 +106,64 @@ export const userInput = z.object({
   name,
   email: z.email().transform((s) => s.toLowerCase()),
   password: z.string().min(12).max(128),
-  role: z.enum(['ADMIN', 'MANAGER', 'TEACHER']),
+  role: z.enum(['ADMIN', 'MANAGER', 'TEACHER', 'INSTRUCTOR', 'CLUB_OPERATOR', 'ACCOUNTANT']),
+});
+
+export const activityInput = z.object({
+  name,
+  description: z.string().max(3000).default(''),
+  minAge: z.number().int().min(0).max(18).default(0),
+  maxAge: z.number().int().min(0).max(18).default(18),
+  minHeightCm: z.number().positive().max(250).nullable().default(null),
+  maxWeightKg: z.number().positive().max(250).nullable().default(null),
+  durationMinutes: z.number().int().min(15).max(480).default(60),
+  capacity: z.number().int().min(1).max(500).default(10),
+  season: z.enum(['ALL_YEAR', 'SUMMER', 'WINTER']).default('ALL_YEAR'),
+  requiresConsent: z.boolean().default(true),
+  requiresInstructor: z.boolean().default(true),
+  status: z.enum(['ACTIVE', 'PAUSED', 'ARCHIVED']).default('ACTIVE'),
+  courseId: id.nullable().optional(),
+}).refine((v) => v.maxAge >= v.minAge, 'Возрастной диапазон некорректен');
+
+export const venueInput = z.object({
+  name,
+  zone: z.string().trim().min(2).max(120),
+  description: z.string().max(2000).default(''),
+  capacity: z.number().int().min(1).max(1000).default(10),
+  active: z.boolean().default(true),
+});
+
+export const inventoryItemInput = z.object({
+  name,
+  inventoryNo: z.string().trim().min(2).max(80),
+  quantity: z.number().int().min(1).max(10000).default(1),
+  status: z.enum(['AVAILABLE', 'ISSUED', 'MAINTENANCE', 'RETIRED']).default('AVAILABLE'),
+  notes: z.string().max(2000).default(''),
+});
+
+export const consentInput = z.object({
+  studentId: id,
+  parentId: id,
+  consentType: z.string().trim().min(2).max(120),
+  validFrom: z.iso.date(),
+  validUntil: z.iso.date().nullable().optional(),
+  notes: z.string().max(2000).default(''),
+});
+
+export const activityBookingInput = z.object({
+  studentId: id,
+  activityId: id,
+  venueId: id,
+  instructorId: id.nullable().optional(),
+  consentId: id.nullable().optional(),
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+  status: z.enum(['RESERVED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).default('RESERVED'),
+  price: money,
+  notes: z.string().max(2000).default(''),
+}).refine((v) => new Date(v.endsAt) > new Date(v.startsAt), 'Окончание должно быть позже начала');
+
+export const inventoryIssueInput = z.object({
+  itemId: id,
+  quantity: z.number().int().min(1).max(1000).default(1),
 });

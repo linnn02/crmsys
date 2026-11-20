@@ -14,7 +14,7 @@ async function main() {
   await db.$transaction(
     async (tx) => {
       const roles = await Promise.all(
-        (['ADMIN', 'MANAGER', 'TEACHER'] as const).map((code) =>
+        (['ADMIN', 'MANAGER', 'TEACHER', 'INSTRUCTOR', 'CLUB_OPERATOR', 'ACCOUNTANT'] as const).map((code) =>
           tx.role.create({ data: { code } }),
         ),
       );
@@ -229,6 +229,25 @@ async function main() {
                 });
             }
         }
+      }
+      const activities = [];
+      for (const [name, minAge, maxAge, capacity, requiresConsent] of [
+        ['Верёвочный парк', 6, 16, 8, true], ['Лучный тир', 8, 17, 6, true], ['Велопрогулка по лесу', 7, 16, 10, true],
+        ['Творческая мастерская', 4, 14, 12, false], ['Катание на пони', 4, 12, 6, true], ['Йога на природе', 6, 16, 15, false],
+      ] as const)
+        activities.push(await tx.activity.create({ data: { name, description: 'Программа Oi-Qaragai для демонстрационного центра', minAge, maxAge, capacity, requiresConsent } }));
+      const venues = [];
+      for (const [name, zone, capacity] of [['Лесная тропа', 'Угуша', 12], ['Учебный склон', 'Oi-Qaragai', 10], ['Шатёр творчества', 'Эко-деревня', 20]] as const)
+        venues.push(await tx.venue.create({ data: { name, zone, capacity } }));
+      const inventory = [];
+      for (const [name, inventoryNo, quantity] of [['Шлем детский', 'OQ-HELM-01', 20], ['Защитный жилет', 'OQ-VEST-01', 12], ['Лук учебный', 'OQ-BOW-01', 8]] as const)
+        inventory.push(await tx.inventoryItem.create({ data: { name, inventoryNo, quantity } }));
+      for (let i = 0; i < 12; i++) {
+        const student = students[i]!; const parent = parents[i % parents.length]!;
+        const consent = await tx.parentConsent.create({ data: { studentId: student.id, parentId: parent.id, consentType: 'АКТИВНОСТИ И ФОТО', validFrom: new Date(now.getUTCFullYear(), 0, 1), validUntil: new Date(now.getUTCFullYear(), 11, 31) } });
+        const start = new Date(+now + (i + 1) * 86400000); start.setUTCHours(6 + (i % 3) * 2, 0, 0, 0);
+        const booking = await tx.activityBooking.create({ data: { studentId: student.id, activityId: activities[i % activities.length]!.id, venueId: venues[i % venues.length]!.id, instructorId: teachers[i % teachers.length]!.id, consentId, startsAt: start, endsAt: new Date(+start + 60 * 60000), status: 'RESERVED', price: new Prisma.Decimal(5000) } });
+        if (i < 4) await tx.inventoryIssue.create({ data: { bookingId: booking.id, itemId: inventory[i % inventory.length]!.id, quantity: 1 } });
       }
       await tx.setting.create({ data: { key: 'centerName', value: 'Орбита · детский центр' } });
     },

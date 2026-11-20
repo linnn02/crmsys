@@ -24,6 +24,7 @@ import { AuthContext, type User } from './hooks/auth';
 import { Loading, ErrorState } from './components/States';
 import { Button } from './components/ui/button';
 import { Login } from './pages/Login';
+import { Activities } from './pages/Activities';
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 import { Directory, StudentCard } from './pages/Directory';
 const Schedule = lazy(() => import('./pages/Schedule').then((m) => ({ default: m.Schedule })));
@@ -40,6 +41,7 @@ const nav = [
   ['/teachers', 'Преподаватели', GraduationCap],
   ['/groups', 'Группы', Layers],
   ['/schedule', 'Расписание', CalendarDays],
+  ['/activities', 'Активности курорта', Orbit],
   ['/attendance', 'Посещаемость', ClipboardCheck],
   ['/subscriptions', 'Абонементы', Tickets],
   ['/payments', 'Платежи', Wallet],
@@ -73,7 +75,7 @@ export function App() {
       user.role === 'ADMIN' ||
       (user.role === 'MANAGER'
         ? path !== '/settings'
-        : ['/', '/students', '/schedule', '/attendance', '/analytics', '/notifications'].includes(
+        : ['/', '/students', '/schedule', '/activities', '/attendance', '/analytics', '/notifications'].includes(
             path,
           )),
   );
@@ -109,7 +111,7 @@ export function App() {
               <b>{user.name}</b>
               <small>
                 {
-                  { ADMIN: 'Администратор', MANAGER: 'Менеджер', TEACHER: 'Преподаватель' }[
+                  { ADMIN: 'Администратор', MANAGER: 'Менеджер', TEACHER: 'Преподаватель', INSTRUCTOR: 'Инструктор', CLUB_OPERATOR: 'Оператор клуба', ACCOUNTANT: 'Бухгалтер' }[
                     user.role
                   ]
                 }
@@ -182,6 +184,7 @@ export function App() {
                   </>
                 )}
                 <Route path="/schedule" element={<Schedule />} />
+                <Route path="/activities" element={<Activities />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/analytics" element={<Dashboard analytics />} />
                 <Route path="/notifications" element={<Notifications />} />

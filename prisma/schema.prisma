@@ -10,6 +10,30 @@ enum RoleCode {
   ADMIN
   MANAGER
   TEACHER
+  INSTRUCTOR
+  CLUB_OPERATOR
+  ACCOUNTANT
+}
+
+enum ActivityStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum BookingStatus {
+  RESERVED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum InventoryStatus {
+  AVAILABLE
+  ISSUED
+  MAINTENANCE
+  RETIRED
 }
 
 enum RecordStatus {
@@ -86,18 +110,19 @@ model Session {
 }
 
 model Teacher {
-  id             String       @id @default(uuid()) @db.Uuid
-  name           String
-  phone          String
-  email          String       @unique
-  specialization String
-  status         RecordStatus @default(ACTIVE)
-  userId         String?      @unique @db.Uuid
-  user           User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  groups         Group[]
-  lessons        Lesson[]
-  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  id               String            @id @default(uuid()) @db.Uuid
+  name             String
+  phone            String
+  email            String            @unique
+  specialization   String
+  status           RecordStatus      @default(ACTIVE)
+  userId           String?           @unique @db.Uuid
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  groups           Group[]
+  lessons          Lesson[]
+  activityBookings ActivityBooking[]
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(3)
 }
 
 model Parent {
@@ -108,6 +133,7 @@ model Parent {
   notes            String          @default("")
   preferredContact String          @default("PHONE")
   students         StudentParent[]
+  consents         ParentConsent[]
   createdAt        DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime        @updatedAt @db.Timestamptz(3)
 
@@ -115,20 +141,28 @@ model Parent {
 }
 
 model Student {
-  id            String            @id @default(uuid()) @db.Uuid
-  name          String
-  birthDate     DateTime          @db.Date
-  gender        String?
-  status        RecordStatus      @default(ACTIVE)
-  notes         String            @default("")
-  parents       StudentParent[]
-  enrollments   GroupEnrollment[]
-  attendance    Attendance[]
-  subscriptions Subscription[]
-  invoices      Invoice[]
-  payments      Payment[]
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+  id                     String            @id @default(uuid()) @db.Uuid
+  name                   String
+  birthDate              DateTime          @db.Date
+  gender                 String?
+  status                 RecordStatus      @default(ACTIVE)
+  notes                  String            @default("")
+  heightCm               Decimal?          @db.Decimal(5, 2)
+  weightKg               Decimal?          @db.Decimal(5, 2)
+  allergies              String            @default("")
+  medicalNotes           String            @default("")
+  behaviorNotes          String            @default("")
+  independentStayAllowed Boolean           @default(false)
+  parents                StudentParent[]
+  enrollments            GroupEnrollment[]
+  attendance             Attendance[]
+  subscriptions          Subscription[]
+  invoices               Invoice[]
+  payments               Payment[]
+  parentConsents         ParentConsent[]
+  activityBookings       ActivityBooking[]
+  createdAt              DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime          @updatedAt @db.Timestamptz(3)
 
   @@unique([name, birthDate])
   @@index([status, name])
@@ -158,6 +192,126 @@ model Course {
   subscriptions Subscription[]
   createdAt     DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  activities    Activity[]
+}
+
+model Activity {
+  id                 String              @id @default(uuid()) @db.Uuid
+  name               String              @unique
+  description        String              @default("")
+  minAge             Int                 @default(0)
+  maxAge             Int                 @default(18)
+  minHeightCm        Decimal?            @db.Decimal(5, 2)
+  maxWeightKg        Decimal?            @db.Decimal(5, 2)
+  durationMinutes    Int                 @default(60)
+  capacity           Int                 @default(10)
+  season             String              @default("ALL_YEAR")
+  requiresConsent    Boolean             @default(true)
+  requiresInstructor Boolean             @default(true)
+  status             ActivityStatus      @default(ACTIVE)
+  courseId           String?             @db.Uuid
+  course             Course?             @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  bookings           ActivityBooking[]
+  inventory          ActivityInventory[]
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([status, minAge, maxAge])
+}
+
+model Venue {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @unique
+  zone        String
+  description String            @default("")
+  capacity    Int               @default(10)
+  active      Boolean           @default(true)
+  bookings    ActivityBooking[]
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+}
+
+model InventoryItem {
+  id            String              @id @default(uuid()) @db.Uuid
+  name          String
+  inventoryNo   String              @unique
+  quantity      Int                 @default(1)
+  status        InventoryStatus     @default(AVAILABLE)
+  notes         String              @default("")
+  activityLinks ActivityInventory[]
+  issues        InventoryIssue[]
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([status, name])
+}
+
+model ActivityInventory {
+  activityId String        @db.Uuid
+  itemId     String        @db.Uuid
+  required   Boolean       @default(false)
+  activity   Activity      @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  item       InventoryItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@id([activityId, itemId])
+}
+
+model ParentConsent {
+  id          String            @id @default(uuid()) @db.Uuid
+  studentId   String            @db.Uuid
+  parentId    String            @db.Uuid
+  consentType String
+  validFrom   DateTime          @db.Date
+  validUntil  DateTime?         @db.Date
+  signedAt    DateTime          @default(now()) @db.Timestamptz(3)
+  notes       String            @default("")
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  parent      Parent            @relation(fields: [parentId], references: [id], onDelete: Restrict)
+  bookings    ActivityBooking[]
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([studentId, consentType, validUntil])
+}
+
+model ActivityBooking {
+  id              String           @id @default(uuid()) @db.Uuid
+  studentId       String           @db.Uuid
+  activityId      String           @db.Uuid
+  venueId         String           @db.Uuid
+  instructorId    String?          @db.Uuid
+  consentId       String?          @db.Uuid
+  startsAt        DateTime         @db.Timestamptz(3)
+  endsAt          DateTime         @db.Timestamptz(3)
+  status          BookingStatus    @default(RESERVED)
+  price           Decimal          @db.Decimal(14, 2)
+  notes           String           @default("")
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  activity        Activity         @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  venue           Venue            @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  instructor      Teacher?         @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  consent         ParentConsent?   @relation(fields: [consentId], references: [id], onDelete: Restrict)
+  inventoryIssues InventoryIssue[]
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([startsAt, status])
+  @@index([activityId, startsAt])
+  @@index([venueId, startsAt])
+  @@index([studentId, startsAt])
+}
+
+model InventoryIssue {
+  id         String          @id @default(uuid()) @db.Uuid
+  bookingId  String          @db.Uuid
+  itemId     String          @db.Uuid
+  quantity   Int             @default(1)
+  issuedAt   DateTime        @default(now()) @db.Timestamptz(3)
+  returnedAt DateTime?       @db.Timestamptz(3)
+  booking    ActivityBooking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  item       InventoryItem   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([itemId, returnedAt])
 }
 
 model Group {
