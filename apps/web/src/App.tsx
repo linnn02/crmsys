@@ -91,7 +91,7 @@ export function App() {
         <aside className={open ? 'sidebar open' : 'sidebar'}>
           <Link to="/" className="brand">
             <Orbit size={31} />
-            орбита<span>CRM</span>
+            Oi-Qaragai<span>CRM</span>
           </Link>
           <div className="workspace">
             <span className="workspace-icon">О</span>

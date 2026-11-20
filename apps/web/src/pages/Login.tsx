@@ -20,7 +20,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     <div className="login">
       <section className="login-story">
         <div className="brand">
-          <Orbit /> орбита<span>CRM</span>
+          <Orbit /> Oi-Qaragai<span>CRM</span>
         </div>
         <div>
           <span className="eyebrow">БОЛЬШЕ ВРЕМЕНИ ДЛЯ ГЛАВНОГО</span>
@@ -29,9 +29,9 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             <br />
             вашему центру.
             <br />
-            <em>В одной орбите.</em>
+            <em>В одном центре.</em>
           </h1>
-          <p>Ученики, занятия и финансы — в понятной системе, которая помогает каждый день.</p>
+          <p>Ученики, занятия, активности и финансы — в понятной системе для команды Oi-Qaragai.</p>
         </div>
         <span className="secure">
           <ShieldCheck size={18} /> Доступ к данным зависит от вашей роли
