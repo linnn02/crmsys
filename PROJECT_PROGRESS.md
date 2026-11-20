@@ -15,7 +15,11 @@
 | 7. Финансы                 | Начисления, частичная оплата, ключи идемпотентности, возвраты, долги, append-only журнал, фильтры, PDF и CSV                                     | services/finance.ts, payment-query.ts, receipt.ts; Finance.tsx; migration/003     | Реальные платежи/повторы/возвраты и PDF проверены API-тестами                                                           |
 | 8. Аналитика               | DB-метрики, посещаемость, поступления, долги, сроки абонементов, динамика регистраций, направления, заполненность, фильтры дат/групп/направлений | services/analytics.ts, Dashboard.tsx                                              | Контроль числа активных учеников по БД; исключение финансов у преподавателя; открытие раздела E2E                       |
 | 9. Уведомления/UI          | Внутренние события, дедупликация/прочтение, адаптивная навигация, формы, состояния загрузки/ошибок/пустых списков, локальный shadcn Button       | services/notifications.ts, web/components, styles.css, i18n.ts                    | Проверки уведомлений, визуальный просмотр desktop/mobile, E2E 390px без переполнения                                    |
-| 10. QA/эксплуатация        | Vitest+Supertest, Playwright, ESLint/Prettier, четыре миграции, seed, Dockerfile/Compose, 10 документов                                          | tests, e2e, docs, scripts, Dockerfile, docker-compose.yml                         | 24 unit/API и 4 E2E прошли. Docker-запуск и backup/restore не подтверждены                                              |
+| 10. QA/эксплуатация        | Vitest+Supertest, Playwright, ESLint/Prettier, миграция активностей, seed, Dockerfile/Compose, документация Oi-Qaragai                 | tests, e2e, docs, scripts, Dockerfile, docker-compose.yml, OIQARAGAI.md             | typecheck/build прошли; API-тесты требуют PostgreSQL (в текущем окружении порт 5432 недоступен)                         |
+
+## Расширение под Oi-Qaragai
+
+Добавлены `Activity`, `Venue`, `InventoryItem`, `ParentConsent`, `ActivityBooking`, `InventoryIssue`, проверки допуска по возрасту/росту/весу, конфликтов бронирований и новые роли курортной команды. Seed создаёт вымышленные программы и будущие бронирования. Подробности: `docs/OIQARAGAI.md`.
 
 ## Окружение
 
