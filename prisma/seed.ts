@@ -246,7 +246,7 @@ async function main() {
         const student = students[i]!; const parent = parents[i % parents.length]!;
         const consent = await tx.parentConsent.create({ data: { studentId: student.id, parentId: parent.id, consentType: 'АКТИВНОСТИ И ФОТО', validFrom: new Date(now.getUTCFullYear(), 0, 1), validUntil: new Date(now.getUTCFullYear(), 11, 31) } });
         const start = new Date(+now + (i + 1) * 86400000); start.setUTCHours(6 + (i % 3) * 2, 0, 0, 0);
-        const booking = await tx.activityBooking.create({ data: { studentId: student.id, activityId: activities[i % activities.length]!.id, venueId: venues[i % venues.length]!.id, instructorId: teachers[i % teachers.length]!.id, consentId, startsAt: start, endsAt: new Date(+start + 60 * 60000), status: 'RESERVED', price: new Prisma.Decimal(5000) } });
+        const booking = await tx.activityBooking.create({ data: { studentId: student.id, activityId: activities[i % activities.length]!.id, venueId: venues[i % venues.length]!.id, instructorId: teachers[i % teachers.length]!.id, consentId: consent.id, startsAt: start, endsAt: new Date(+start + 60 * 60000), status: 'RESERVED', price: new Prisma.Decimal(5000) } });
         if (i < 4) await tx.inventoryIssue.create({ data: { bookingId: booking.id, itemId: inventory[i % inventory.length]!.id, quantity: 1 } });
       }
       await tx.setting.create({ data: { key: 'centerName', value: 'Орбита · детский центр' } });
