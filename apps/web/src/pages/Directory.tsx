@@ -27,6 +27,9 @@ const columns: Record<string, [string, string][]> = {
   students: [
     ['name', 'Ученик'],
     ['age', 'Возраст'],
+    ['heightCm', 'Рост'],
+    ['footSize', 'Размер ноги'],
+    ['skiLevel', 'Уровень катания'],
     ['status', 'Статус'],
     ['createdAt', 'Регистрация'],
   ],
@@ -112,6 +115,10 @@ export function Directory({ resource }: { resource: string }) {
     students: [
       ...base,
       { key: 'birthDate', label: 'Дата рождения', type: 'date', required: true },
+      { key: 'heightCm', label: 'Рост, см', type: 'number', nullable: true, min: 1 },
+      { key: 'weightKg', label: 'Вес, кг', type: 'number', nullable: true, min: 1 },
+      { key: 'footSize', label: 'Размер ноги', type: 'number', nullable: true, min: 1 },
+      { key: 'skiLevel', label: 'Уровень катания', type: 'select', options: [{ value: 'BEGINNER', label: 'Начальный' }, { value: 'INTERMEDIATE', label: 'Продолжающий' }, { value: 'ADVANCED', label: 'Продвинутый' }] },
       {
         key: 'gender',
         label: 'Пол',
@@ -441,6 +448,8 @@ export function Directory({ resource }: { resource: string }) {
 }
 export function StudentCard({ id }: { id: string }) {
   const user = useAuth();
+  const canManageStudents = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const canViewFinance = user.role === 'ADMIN' || user.role === 'MANAGER' || user.role === 'ACCOUNTANT';
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['student', id], queryFn: () => api<Row>('/students/' + id) });
   const groups = useQuery({
@@ -485,6 +494,14 @@ export function StudentCard({ id }: { id: string }) {
           <p>{text(s, 'notes')}</p>
         </section>
         <section className="panel padded">
+          <h2>Данные для проката</h2>
+          <div className="list-row"><span>Рост</span><b>{text(s, 'heightCm')} см</b></div>
+          <div className="list-row"><span>Вес</span><b>{text(s, 'weightKg')} кг</b></div>
+          <div className="list-row"><span>Размер ноги</span><b>{text(s, 'footSize')}</b></div>
+          <div className="list-row"><span>Уровень катания</span><b>{({ BEGINNER: 'Начальный', INTERMEDIATE: 'Продолжающий', ADVANCED: 'Продвинутый' } as Record<string, string>)[text(s, 'skiLevel')] ?? 'Не указан'}</b></div>
+          <div className="list-row"><span>Медицинские ограничения</span><b>{text(s, 'medicalNotes') || 'Не указаны'}</b></div>
+        </section>
+        <section className="panel padded">
           <h2>Группы и история записи</h2>
           {array('enrollments').map((e) => (
             <div className="list-row" key={e.id}>
@@ -494,7 +511,7 @@ export function StudentCard({ id }: { id: string }) {
                   {e.leftAt ? 'Завершено ' + date(e.leftAt) : 'Посещает с ' + date(e.joinedAt)}
                 </small>
               </div>
-              {!e.leftAt && user.role !== 'TEACHER' && (
+              {!e.leftAt && canManageStudents && (
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -511,7 +528,7 @@ export function StudentCard({ id }: { id: string }) {
               )}
             </div>
           ))}
-          {user.role !== 'TEACHER' && (
+          {canManageStudents && (
             <div className="toolbar">
               <select
                 aria-label="Группа для записи"
@@ -558,7 +575,7 @@ export function StudentCard({ id }: { id: string }) {
             <Empty />
           )}
         </section>
-        {user.role !== 'TEACHER' && (
+        {canViewFinance && (
           <section className="panel padded">
             <h2>Финансовая история</h2>
             <h3>Абонементы</h3>
