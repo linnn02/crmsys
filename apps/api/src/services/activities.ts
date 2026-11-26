@@ -81,7 +81,7 @@ export async function createBooking(input: z.infer<typeof v.activityBookingInput
     await audit(tx, actor.id, 'CREATE', 'ActivityBooking', result.id); return result;
   });
 }
-export async function updateBookingStatus(id: string, status: 'RESERVED'|'CONFIRMED'|'COMPLETED'|'CANCELLED'|'NO_SHOW', actor: Principal) {
+export async function updateBookingStatus(id: string, status: 'RESERVED'|'PAID'|'EQUIPMENT_ISSUED'|'ARRIVED'|'IN_PROGRESS'|'CONFIRMED'|'COMPLETED'|'CANCELLED'|'NO_SHOW', actor: Principal) {
   return transaction(async (tx) => { const result = await tx.activityBooking.update({ where: { id }, data: { status } }); await audit(tx, actor.id, 'STATUS', 'ActivityBooking', id, { status }); return result; });
 }
 export async function issueInventory(bookingId: string, input: z.infer<typeof v.inventoryIssueInput>, actor: Principal) {
@@ -95,4 +95,25 @@ export async function issueInventory(bookingId: string, input: z.infer<typeof v.
 }
 export async function returnInventory(id: string, actor: Principal) {
   return transaction(async (tx) => { const issue = await tx.inventoryIssue.update({ where: { id }, data: { returnedAt: new Date() } }); await tx.inventoryItem.update({ where: { id: issue.itemId }, data: { status: 'AVAILABLE' } }); await audit(tx, actor.id, 'RETURN', 'InventoryIssue', id); return issue; });
+}
+
+export async function createPublicBooking(input: z.infer<typeof import('../validators/index.js').publicBookingInput>) {
+  const admin = await db.user.findFirstOrThrow({ where: { role: { code: 'ADMIN' }, active: true } });
+  const result = await transaction(async (tx) => {
+    const parent = await tx.parent.upsert({
+      where: { phone: input.parentPhone },
+      create: { name: input.parentName, phone: input.parentPhone, email: input.parentEmail ?? '' },
+      update: { name: input.parentName, email: input.parentEmail ?? undefined },
+    });
+    const student = await tx.student.upsert({
+      where: { name_birthDate: { name: input.childName, birthDate: new Date(input.birthDate) } },
+      create: { name: input.childName, birthDate: new Date(input.birthDate), footSize: input.footSize ?? null, skiLevel: input.skiLevel ?? null, parents: { create: { parentId: parent.id } } },
+      update: { footSize: input.footSize ?? undefined, skiLevel: input.skiLevel ?? undefined },
+    });
+    await tx.studentParent.upsert({ where: { studentId_parentId: { studentId: student.id, parentId: parent.id } }, create: { studentId: student.id, parentId: parent.id }, update: {} });
+    const consent = await tx.parentConsent.create({ data: { studentId: student.id, parentId: parent.id, consentType: 'ОНЛАЙН-ЗАПИСЬ', validFrom: new Date() } });
+    return { student, consent };
+  });
+  const { childName: _childName, birthDate: _birthDate, footSize: _footSize, skiLevel: _skiLevel, parentName: _parentName, parentPhone: _parentPhone, parentEmail: _parentEmail, consentAccepted: _consentAccepted, ...booking } = input;
+  return createBooking({ ...booking, studentId: result.student.id, consentId: result.consent.id, source: 'ONLINE' }, { id: admin.id, name: admin.name, email: admin.email, role: 'ADMIN', teacherId: null, sessionId: '' });
 }

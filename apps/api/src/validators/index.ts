@@ -19,6 +19,10 @@ export const studentInput = z.object({
   gender: z.enum(['MALE', 'FEMALE']).nullable().optional(),
   status: status.default('ACTIVE'),
   notes: z.string().max(3000).default(''),
+  heightCm: z.number().positive().max(250).nullable().optional(),
+  weightKg: z.number().positive().max(250).nullable().optional(),
+  footSize: z.number().positive().max(60).nullable().optional(),
+  skiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).nullable().optional(),
   parentIds: z.array(id).min(1).max(5),
 });
 export const parentInput = z.object({
@@ -158,12 +162,29 @@ export const activityBookingInput = z.object({
   consentId: id.nullable().optional(),
   startsAt: z.iso.datetime({ offset: true }),
   endsAt: z.iso.datetime({ offset: true }),
-  status: z.enum(['RESERVED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).default('RESERVED'),
+  status: z.enum(['RESERVED', 'PAID', 'EQUIPMENT_ISSUED', 'ARRIVED', 'IN_PROGRESS', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).default('RESERVED'),
   price: money,
   notes: z.string().max(2000).default(''),
+  ownEquipment: z.boolean().default(false),
+  skisRequired: z.boolean().default(false),
+  bootsRequired: z.boolean().default(false),
+  helmetRequired: z.boolean().default(false),
+  polesRequired: z.boolean().default(false),
+  source: z.enum(['ONLINE', 'OFFLINE']).default('OFFLINE'),
 }).refine((v) => new Date(v.endsAt) > new Date(v.startsAt), 'Окончание должно быть позже начала');
 
 export const inventoryIssueInput = z.object({
   itemId: id,
   quantity: z.number().int().min(1).max(1000).default(1),
 });
+
+export const publicBookingInput = activityBookingInput.extend({
+  childName: name,
+  birthDate: z.iso.date(),
+  footSize: z.number().positive().max(60).nullable().optional(),
+  skiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).nullable().optional(),
+  parentName: name,
+  parentPhone: phone,
+  parentEmail: z.union([z.email(), z.literal('')]).optional(),
+  consentAccepted: z.literal(true),
+}).omit({ studentId: true });
