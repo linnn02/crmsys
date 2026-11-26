@@ -1,5 +1,5 @@
-import type { Prisma, BookingStatus } from '@prisma/client';
-import { db, transaction } from '../repositories/db.js';
+import type { BookingStatus } from '@prisma/client';
+import { db, transaction, type Tx } from '../repositories/db.js';
 import type { Principal } from '../middlewares/auth.js';
 import { requireCondition } from '../middlewares/errors.js';
 import { audit } from './audit.js';
@@ -46,8 +46,7 @@ export async function saveConsent(input: z.infer<typeof v.consentInput>, actor: 
   });
 }
 
-export async function createBooking(input: z.infer<typeof v.activityBookingInput>, actor: Principal) {
-  return transaction(async (tx) => {
+async function createBookingInTx(tx: Tx, input: z.infer<typeof v.activityBookingInput>, actor: Principal) {
     const startsAt = new Date(input.startsAt), endsAt = new Date(input.endsAt);
     const [student, activity, venue] = await Promise.all([
       tx.student.findUniqueOrThrow({ where: { id: input.studentId } }),
@@ -79,7 +78,9 @@ export async function createBooking(input: z.infer<typeof v.activityBookingInput
     requireCondition(!instructorConflict, 409, 'INSTRUCTOR_CONFLICT', 'Инструктор уже занят в это время');
     const result = await tx.activityBooking.create({ data: { ...input, startsAt, endsAt, price: input.price, instructorId: input.instructorId ?? null, consentId: input.consentId ?? null } });
     await audit(tx, actor.id, 'CREATE', 'ActivityBooking', result.id); return result;
-  });
+}
+export async function createBooking(input: z.infer<typeof v.activityBookingInput>, actor: Principal) {
+  return transaction((tx) => createBookingInTx(tx, input, actor));
 }
 export async function updateBookingStatus(id: string, status: 'RESERVED'|'PAID'|'EQUIPMENT_ISSUED'|'ARRIVED'|'IN_PROGRESS'|'CONFIRMED'|'COMPLETED'|'CANCELLED'|'NO_SHOW', actor: Principal) {
   return transaction(async (tx) => { const result = await tx.activityBooking.update({ where: { id }, data: { status } }); await audit(tx, actor.id, 'STATUS', 'ActivityBooking', id, { status }); return result; });
@@ -98,8 +99,8 @@ export async function returnInventory(id: string, actor: Principal) {
 }
 
 export async function createPublicBooking(input: z.infer<typeof import('../validators/index.js').publicBookingInput>) {
-  const admin = await db.user.findFirstOrThrow({ where: { role: { code: 'ADMIN' }, active: true } });
   const result = await transaction(async (tx) => {
+    const admin = await tx.user.findFirstOrThrow({ where: { role: { code: 'ADMIN' }, active: true } });
     const parent = await tx.parent.upsert({
       where: { phone: input.parentPhone },
       create: { name: input.parentName, phone: input.parentPhone, email: input.parentEmail ?? '' },
@@ -112,8 +113,10 @@ export async function createPublicBooking(input: z.infer<typeof import('../valid
     });
     await tx.studentParent.upsert({ where: { studentId_parentId: { studentId: student.id, parentId: parent.id } }, create: { studentId: student.id, parentId: parent.id }, update: {} });
     const consent = await tx.parentConsent.create({ data: { studentId: student.id, parentId: parent.id, consentType: 'ОНЛАЙН-ЗАПИСЬ', validFrom: new Date() } });
-    return { student, consent };
+    const { childName: _childName, birthDate: _birthDate, footSize: _footSize, skiLevel: _skiLevel, parentName: _parentName, parentPhone: _parentPhone, parentEmail: _parentEmail, consentAccepted: _consentAccepted, ...booking } = input;
+    const principal: Principal = { id: admin.id, name: admin.name, email: admin.email, role: 'ADMIN', teacherId: null, sessionId: '' };
+    const created = await createBookingInTx(tx, { ...booking, studentId: student.id, consentId: consent.id, source: 'ONLINE' }, principal);
+    return created;
   });
-  const { childName: _childName, birthDate: _birthDate, footSize: _footSize, skiLevel: _skiLevel, parentName: _parentName, parentPhone: _parentPhone, parentEmail: _parentEmail, consentAccepted: _consentAccepted, ...booking } = input;
-  return createBooking({ ...booking, studentId: result.student.id, consentId: result.consent.id, source: 'ONLINE' }, { id: admin.id, name: admin.name, email: admin.email, role: 'ADMIN', teacherId: null, sessionId: '' });
+  return result;
 }
