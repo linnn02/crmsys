@@ -17,6 +17,7 @@ export function age(birthDate: Date, now = new Date()) {
 }
 export async function listStudents(query: unknown, actor: Principal) {
   const q = page.parse(query);
+  const teachingRole = actor.role === 'TEACHER' || actor.role === 'INSTRUCTOR';
   const where: Prisma.StudentWhereInput = {
     status: q.status,
     AND: [
@@ -27,7 +28,7 @@ export async function listStudents(query: unknown, actor: Principal) {
         ],
       },
       ...(q.groupId ? [{ enrollments: { some: { groupId: q.groupId, leftAt: null } } }] : []),
-      ...(actor.role === 'TEACHER'
+      ...(teachingRole
         ? [
             {
               enrollments: {
@@ -59,7 +60,7 @@ export async function listStudents(query: unknown, actor: Principal) {
       ...s,
       age: age(s.birthDate),
       enrollments:
-        actor.role === 'TEACHER'
+      teachingRole
           ? s.enrollments.filter((e) => e.group.teacherId === actor.teacherId)
           : s.enrollments,
     })),
@@ -100,6 +101,8 @@ export async function saveStudent(
   });
 }
 export async function studentDetail(id: string, actor: Principal) {
+  const teachingRole = actor.role === 'TEACHER' || actor.role === 'INSTRUCTOR';
+  const financialRole = actor.role === 'ADMIN' || actor.role === 'MANAGER' || actor.role === 'ACCOUNTANT';
   const student = await db.student.findUnique({
     where: { id },
     include: {
@@ -110,7 +113,7 @@ export async function studentDetail(id: string, actor: Principal) {
         orderBy: { createdAt: 'desc' },
         take: 100,
       },
-      ...(actor.role === 'TEACHER'
+      ...(financialRole
         ? {}
         : {
             subscriptions: { include: { tariff: true, usage: true } },
@@ -122,7 +125,7 @@ export async function studentDetail(id: string, actor: Principal) {
     },
   });
   requireCondition(student, 404, 'NOT_FOUND', 'Ученик не найден');
-  if (actor.role === 'TEACHER') {
+  if (teachingRole) {
     requireCondition(
       student.enrollments.some((e) => !e.leftAt && e.group.teacherId === actor.teacherId),
       403,

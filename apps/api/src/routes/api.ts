@@ -122,7 +122,7 @@ api.get('/my/groups', async (req, res) =>
   res.json({
     items: await db.group.findMany({
       where:
-        req.principal.role === 'TEACHER'
+        (req.principal.role === 'TEACHER' || req.principal.role === 'INSTRUCTOR')
           ? { teacherId: req.principal.teacherId ?? '00000000-0000-0000-0000-000000000000' }
           : {},
       include: {
@@ -150,7 +150,7 @@ api.get('/lessons', async (req, res) => {
         },
         groupId: q.groupId,
         teacherId:
-          req.principal.role === 'TEACHER'
+          (req.principal.role === 'TEACHER' || req.principal.role === 'INSTRUCTOR')
             ? (req.principal.teacherId ?? '00000000-0000-0000-0000-000000000000')
             : q.teacherId,
       },
@@ -203,7 +203,7 @@ api.get('/attendance/:lessonId', async (req, res) => {
     include: { attendance: { include: { student: true } } },
   });
   requireCondition(
-    req.principal.role !== 'TEACHER' || lesson.teacherId === req.principal.teacherId,
+    !['TEACHER', 'INSTRUCTOR'].includes(req.principal.role) || lesson.teacherId === req.principal.teacherId,
     403,
     'FORBIDDEN',
     'Чужое занятие',

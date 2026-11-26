@@ -3,7 +3,7 @@ import { age } from '../apps/api/src/services/students.js';
 import { overlaps } from '../apps/api/src/services/lessons.js';
 import { shouldCharge } from '../apps/api/src/services/attendance.js';
 import { debt } from '../apps/api/src/services/finance.js';
-import { lessonInput, paymentInput } from '../apps/api/src/validators/index.js';
+import { lessonInput, paymentInput, publicBookingInput } from '../apps/api/src/validators/index.js';
 import { canTransitionBooking } from '../apps/api/src/services/activities.js';
 describe('Бизнес-правила', () => {
   it('возраст меняется в день рождения', () => {
@@ -44,5 +44,16 @@ describe('Бизнес-правила', () => {
     expect(canTransitionBooking('RESERVED', 'PAID')).toBe(true);
     expect(canTransitionBooking('PAID', 'EQUIPMENT_ISSUED')).toBe(true);
     expect(canTransitionBooking('RESERVED', 'COMPLETED')).toBe(false);
+  });
+  it('онлайн-запись требует согласие и прокатные данные', () => {
+    const result = publicBookingInput.safeParse({
+      activityId: crypto.randomUUID(), venueId: crypto.randomUUID(), instructorId: null,
+      consentAccepted: true, childName: 'Тестовый ребёнок', birthDate: '2018-01-01',
+      parentName: 'Тестовый родитель', parentPhone: '+77001234567', parentEmail: '',
+      startsAt: '2026-12-01T05:00:00Z', endsAt: '2026-12-01T06:00:00Z', price: '5000',
+      ownEquipment: false, skisRequired: true, bootsRequired: true, helmetRequired: true,
+      polesRequired: true, status: 'RESERVED', source: 'ONLINE', notes: '', footSize: 30,
+    });
+    expect(result.success).toBe(true);
   });
 });
