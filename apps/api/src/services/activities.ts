@@ -8,6 +8,14 @@ import type * as v from '../validators/index.js';
 import type { z } from 'zod';
 
 const activeStatuses: { notIn: BookingStatus[] } = { notIn: ['CANCELLED', 'NO_SHOW'] };
+const bookingTransitions: Record<string, string[]> = {
+  RESERVED: ['PAID', 'CANCELLED'], PAID: ['EQUIPMENT_ISSUED', 'CANCELLED'],
+  EQUIPMENT_ISSUED: ['ARRIVED', 'CANCELLED'], ARRIVED: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['COMPLETED'], CONFIRMED: ['PAID', 'CANCELLED'], NO_SHOW: [], CANCELLED: [], COMPLETED: [],
+};
+export function canTransitionBooking(from: BookingStatus, to: BookingStatus) {
+  return from === to || bookingTransitions[from]?.includes(to) === true;
+}
 
 export const listActivities = () => db.activity.findMany({ orderBy: { name: 'asc' }, include: { course: true } });
 export const listVenues = () => db.venue.findMany({ orderBy: { name: 'asc' } });
@@ -21,6 +29,23 @@ export const listBookings = (from?: Date, to?: Date) => db.activityBooking.findM
   include: { student: true, activity: true, venue: true, instructor: true, consent: true, inventoryIssues: { include: { item: true } } },
   orderBy: { startsAt: 'asc' }, take: 1000,
 });
+
+export async function listPublicSlots(date: string, childAge?: number) {
+  const activities = await db.activity.findMany({ where: { status: 'ACTIVE', ...(childAge === undefined ? {} : { minAge: { lte: childAge }, maxAge: { gte: childAge } }) }, orderBy: { name: 'asc' } });
+  const venues = await db.venue.findMany({ where: { active: true }, orderBy: { name: 'asc' }, take: 1 });
+  const instructor = await db.teacher.findFirst({ where: { status: 'ACTIVE' }, orderBy: { name: 'asc' } });
+  if (!venues[0]) return [];
+  const slots = [];
+  for (const activity of activities) {
+    for (const hour of [10, 13, 16]) {
+      const startsAt = new Date(`${date}T${String(hour - 5).padStart(2, '0')}:00:00.000Z`);
+      const endsAt = new Date(+startsAt + activity.durationMinutes * 60000);
+      const booked = await db.activityBooking.count({ where: { activityId: activity.id, startsAt: { lt: endsAt }, endsAt: { gt: startsAt }, status: activeStatuses } });
+      slots.push({ id: `${activity.id}-${date}-${hour}`, activityId: activity.id, activityName: activity.name, venueId: venues[0].id, venueName: venues[0].name, instructorId: instructor?.id ?? null, instructorName: instructor?.name ?? null, startsAt, endsAt, price: '5000.00', capacity: activity.capacity, booked, free: Math.max(activity.capacity - booked, 0) });
+    }
+  }
+  return slots;
+}
 
 export async function saveActivity(input: z.infer<typeof v.activityInput>, actor: Principal, id?: string) {
   return transaction(async (tx) => {
@@ -83,7 +108,7 @@ export async function createBooking(input: z.infer<typeof v.activityBookingInput
   return transaction((tx) => createBookingInTx(tx, input, actor));
 }
 export async function updateBookingStatus(id: string, status: 'RESERVED'|'PAID'|'EQUIPMENT_ISSUED'|'ARRIVED'|'IN_PROGRESS'|'CONFIRMED'|'COMPLETED'|'CANCELLED'|'NO_SHOW', actor: Principal) {
-  return transaction(async (tx) => { const result = await tx.activityBooking.update({ where: { id }, data: { status } }); await audit(tx, actor.id, 'STATUS', 'ActivityBooking', id, { status }); return result; });
+  return transaction(async (tx) => { const current = await tx.activityBooking.findUniqueOrThrow({ where: { id } }); requireCondition(canTransitionBooking(current.status, status), 409, 'INVALID_STATUS_TRANSITION', `Нельзя изменить статус с ${current.status} на ${status}`); const result = await tx.activityBooking.update({ where: { id }, data: { status } }); await audit(tx, actor.id, 'STATUS', 'ActivityBooking', id, { from: current.status, to: status }); return result; });
 }
 export async function issueInventory(bookingId: string, input: z.infer<typeof v.inventoryIssueInput>, actor: Principal) {
   return transaction(async (tx) => {
@@ -108,12 +133,12 @@ export async function createPublicBooking(input: z.infer<typeof import('../valid
     });
     const student = await tx.student.upsert({
       where: { name_birthDate: { name: input.childName, birthDate: new Date(input.birthDate) } },
-      create: { name: input.childName, birthDate: new Date(input.birthDate), footSize: input.footSize ?? null, skiLevel: input.skiLevel ?? null, parents: { create: { parentId: parent.id } } },
-      update: { footSize: input.footSize ?? undefined, skiLevel: input.skiLevel ?? undefined },
+      create: { name: input.childName, birthDate: new Date(input.birthDate), heightCm: input.heightCm ?? null, footSize: input.footSize ?? null, skiLevel: input.skiLevel ?? null, parents: { create: { parentId: parent.id } } },
+      update: { heightCm: input.heightCm ?? undefined, footSize: input.footSize ?? undefined, skiLevel: input.skiLevel ?? undefined },
     });
     await tx.studentParent.upsert({ where: { studentId_parentId: { studentId: student.id, parentId: parent.id } }, create: { studentId: student.id, parentId: parent.id }, update: {} });
     const consent = await tx.parentConsent.create({ data: { studentId: student.id, parentId: parent.id, consentType: 'ОНЛАЙН-ЗАПИСЬ', validFrom: new Date() } });
-    const { childName: _childName, birthDate: _birthDate, footSize: _footSize, skiLevel: _skiLevel, parentName: _parentName, parentPhone: _parentPhone, parentEmail: _parentEmail, consentAccepted: _consentAccepted, ...booking } = input;
+    const { childName: _childName, birthDate: _birthDate, heightCm: _heightCm, footSize: _footSize, skiLevel: _skiLevel, parentName: _parentName, parentPhone: _parentPhone, parentEmail: _parentEmail, consentAccepted: _consentAccepted, ...booking } = input;
     const principal: Principal = { id: admin.id, name: admin.name, email: admin.email, role: 'ADMIN', teacherId: null, sessionId: '' };
     const created = await createBookingInTx(tx, { ...booking, studentId: student.id, consentId: consent.id, source: 'ONLINE' }, principal);
     return created;

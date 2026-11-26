@@ -18,7 +18,7 @@ import { buySubscription, recordPayment, refundPayment, D } from '../services/fi
 import { analytics } from '../services/analytics.js';
 import { audit } from '../services/audit.js';
 import { resourceRoutes } from '../controllers/resources.js';
-import { listActivities, listVenues, listInventory, listConsents, listBookings, saveActivity, saveVenue, saveInventory, saveConsent, createBooking, createPublicBooking, updateBookingStatus, issueInventory, returnInventory } from '../services/activities.js';
+import { listActivities, listVenues, listInventory, listConsents, listBookings, listPublicSlots, saveActivity, saveVenue, saveInventory, saveConsent, createBooking, createPublicBooking, updateBookingStatus, issueInventory, returnInventory } from '../services/activities.js';
 export const api = Router();
 api.post(
   '/auth/login',
@@ -51,6 +51,10 @@ api.post(
 );
 api.post('/public/activity-bookings', rateLimit({ windowMs: 15 * 60000, limit: 30 }), async (req, res) => {
   res.status(201).json(await createPublicBooking(v.publicBookingInput.parse(req.body)));
+});
+api.get('/public/activity-slots', async (req, res) => {
+  const query = z.object({ date: z.iso.date(), age: z.coerce.number().int().min(0).max(18).optional() }).parse(req.query);
+  res.json({ items: await listPublicSlots(query.date, query.age) });
 });
 api.use(authenticate);
 api.get('/auth/me', (req, res) => res.json(req.principal));

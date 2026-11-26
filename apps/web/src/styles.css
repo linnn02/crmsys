@@ -348,6 +348,23 @@ main {
 .padded {
   padding: 22px;
 }
+.slot-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.slot {
+  border: 1px solid #dfe3ec;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #303749;
+  text-align: left;
+}
+.slot:hover:not(:disabled), .slot.selected { border-color: #7951d6; background: #f4efff; }
+.slot:disabled { opacity: .5; cursor: not-allowed; }
+.equipment-checks { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.equipment-checks label, .consent { flex-direction: row; align-items: center; }
 .panel-heading {
   padding: 22px 23px;
   display: flex;

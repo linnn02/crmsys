@@ -25,6 +25,7 @@ import { Loading, ErrorState } from './components/States';
 import { Button } from './components/ui/button';
 import { Login } from './pages/Login';
 import { Activities } from './pages/Activities';
+import { PublicBooking } from './pages/PublicBooking';
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 import { Directory, StudentCard } from './pages/Directory';
 const Schedule = lazy(() => import('./pages/Schedule').then((m) => ({ default: m.Schedule })));
@@ -64,6 +65,7 @@ export function App() {
       !(error instanceof ApiRequestError && error.status === 401) && count < 2,
     staleTime: 60000,
   });
+  if (location.pathname === '/online-booking') return <PublicBooking />;
   if (q.isPending) return <Loading />;
   if (q.error && !(q.error instanceof ApiRequestError && q.error.status === 401))
     return <ErrorState error={q.error} retry={() => void q.refetch()} />;

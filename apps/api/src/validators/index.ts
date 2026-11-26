@@ -154,7 +154,7 @@ export const consentInput = z.object({
   notes: z.string().max(2000).default(''),
 });
 
-export const activityBookingInput = z.object({
+const activityBookingFields = z.object({
   studentId: id,
   activityId: id,
   venueId: id,
@@ -171,20 +171,23 @@ export const activityBookingInput = z.object({
   helmetRequired: z.boolean().default(false),
   polesRequired: z.boolean().default(false),
   source: z.enum(['ONLINE', 'OFFLINE']).default('OFFLINE'),
-}).refine((v) => new Date(v.endsAt) > new Date(v.startsAt), 'Окончание должно быть позже начала');
+});
+const validBookingTime = <T extends { startsAt: string; endsAt: string }>(v: T) => new Date(v.endsAt) > new Date(v.startsAt);
+export const activityBookingInput = activityBookingFields.refine(validBookingTime, 'Окончание должно быть позже начала');
 
 export const inventoryIssueInput = z.object({
   itemId: id,
   quantity: z.number().int().min(1).max(1000).default(1),
 });
 
-export const publicBookingInput = activityBookingInput.extend({
+export const publicBookingInput = activityBookingFields.extend({
   childName: name,
   birthDate: z.iso.date(),
+  heightCm: z.number().positive().max(250).nullable().optional(),
   footSize: z.number().positive().max(60).nullable().optional(),
   skiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).nullable().optional(),
   parentName: name,
   parentPhone: phone,
   parentEmail: z.union([z.email(), z.literal('')]).optional(),
   consentAccepted: z.literal(true),
-}).omit({ studentId: true });
+}).omit({ studentId: true }).refine(validBookingTime, 'Окончание должно быть позже начала');

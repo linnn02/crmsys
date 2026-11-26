@@ -4,6 +4,7 @@ import { overlaps } from '../apps/api/src/services/lessons.js';
 import { shouldCharge } from '../apps/api/src/services/attendance.js';
 import { debt } from '../apps/api/src/services/finance.js';
 import { lessonInput, paymentInput } from '../apps/api/src/validators/index.js';
+import { canTransitionBooking } from '../apps/api/src/services/activities.js';
 describe('Бизнес-правила', () => {
   it('возраст меняется в день рождения', () => {
     expect(age(new Date('2018-10-18'), new Date('2026-10-17'))).toBe(7);
@@ -39,4 +40,9 @@ describe('Бизнес-правила', () => {
         endsAt: '2026-10-18T11:00:00Z',
       }).success,
     ).toBe(false));
+  it('проверяет жизненный цикл брони', () => {
+    expect(canTransitionBooking('RESERVED', 'PAID')).toBe(true);
+    expect(canTransitionBooking('PAID', 'EQUIPMENT_ISSUED')).toBe(true);
+    expect(canTransitionBooking('RESERVED', 'COMPLETED')).toBe(false);
+  });
 });
